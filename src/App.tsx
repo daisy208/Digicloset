@@ -5,14 +5,21 @@ import { ClothingCatalog } from './components/ClothingCatalog';
 import { VirtualTryOn } from './components/VirtualTryOn';
 import { AIPreferences } from './components/AIPreferences';
 import { LightAdjustment } from './components/LightAdjustment';
+import { AIAnalysisPanel } from './components/AIAnalysisPanel';
+import { SmartRecommendations } from './components/SmartRecommendations';
+import { OutfitGenerator } from './components/OutfitGenerator';
+import { ColorHarmonyTool } from './components/ColorHarmonyTool';
 import { ClothingItem, StylePreferences, LightingSettings } from './types';
+import { AIAnalysisResult } from './services/aiService';
 import { mockUser } from './utils/mockData';
+import { mockClothingItems } from './utils/mockData';
 
 function App() {
   const [userPhoto, setUserPhoto] = useState<string>('');
   const [selectedItems, setSelectedItems] = useState<ClothingItem[]>([]);
-  const [activeTab, setActiveTab] = useState<'tryon' | 'catalog' | 'preferences' | 'lighting'>('tryon');
+  const [activeTab, setActiveTab] = useState<'tryon' | 'catalog' | 'preferences' | 'lighting' | 'ai-analysis' | 'recommendations' | 'outfits' | 'colors'>('tryon');
   const [preferences, setPreferences] = useState<StylePreferences>(mockUser.preferences);
+  const [aiAnalysis, setAiAnalysis] = useState<AIAnalysisResult | null>(null);
   const [lightingSettings, setLightingSettings] = useState<LightingSettings>({
     brightness: 100,
     contrast: 100,
@@ -43,6 +50,10 @@ function App() {
   const tabs = [
     { id: 'tryon', label: 'Try-On', icon: <Camera size={20} /> },
     { id: 'catalog', label: 'Catalog', icon: <Shirt size={20} /> },
+    { id: 'ai-analysis', label: 'AI Analysis', icon: <Sparkles size={20} /> },
+    { id: 'recommendations', label: 'Smart Picks', icon: <Sparkles size={20} /> },
+    { id: 'outfits', label: 'Outfits', icon: <Shirt size={20} /> },
+    { id: 'colors', label: 'Colors', icon: <Sun size={20} /> },
     { id: 'preferences', label: 'AI Preferences', icon: <Sparkles size={20} /> },
     { id: 'lighting', label: 'Lighting', icon: <Sun size={20} /> }
   ];
@@ -109,6 +120,29 @@ function App() {
               <PhotoUpload onPhotoSelect={setUserPhoto} currentPhoto={userPhoto} />
             </div>
 
+            {/* AI Analysis Summary */}
+            {aiAnalysis && (
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">AI Insights</h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Body Shape</span>
+                    <span className="font-semibold text-purple-600 capitalize">
+                      {aiAnalysis.bodyShape.replace('-', ' ')}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Skin Tone</span>
+                    <span className="font-semibold text-orange-600 capitalize">{aiAnalysis.skinTone}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Confidence</span>
+                    <span className="font-semibold text-emerald-600">{Math.round(aiAnalysis.confidence * 100)}%</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Quick Stats */}
             <div className="bg-white rounded-xl shadow-lg p-6">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Session Stats</h3>
@@ -125,6 +159,12 @@ function App() {
                   <span className="text-gray-600">AI Preferences</span>
                   <span className="font-semibold text-purple-600">{preferences.preferredStyles.length} styles</span>
                 </div>
+                {aiAnalysis && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">AI Analysis</span>
+                    <span className="font-semibold text-emerald-600">Complete</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -148,6 +188,39 @@ function App() {
                   selectedItems={selectedItems}
                 />
               </div>
+            )}
+
+            {activeTab === 'ai-analysis' && (
+              <AIAnalysisPanel
+                userPhoto={userPhoto}
+                onAnalysisComplete={setAiAnalysis}
+              />
+            )}
+
+            {activeTab === 'recommendations' && (
+              <SmartRecommendations
+                userAnalysis={aiAnalysis}
+                preferences={preferences}
+                availableItems={mockClothingItems}
+                onItemSelect={handleItemSelect}
+                selectedItems={selectedItems}
+              />
+            )}
+
+            {activeTab === 'outfits' && (
+              <OutfitGenerator
+                userAnalysis={aiAnalysis}
+                preferences={preferences}
+                availableItems={mockClothingItems}
+                onOutfitSelect={(items) => setSelectedItems(items)}
+              />
+            )}
+
+            {activeTab === 'colors' && (
+              <ColorHarmonyTool
+                userAnalysis={aiAnalysis}
+                selectedItem={selectedItems[0] || null}
+              />
             )}
 
             {activeTab === 'preferences' && (
