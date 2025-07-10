@@ -86,3 +86,39 @@ export interface VirtualTryOnResult {
   };
   processingTime: number;
 }
+
+// AI-related types
+export interface AIAnalysisResult {
+  bodyMeasurements: {
+    shoulders: number;
+    chest: number;
+    waist: number;
+    hips: number;
+    height: number;
+  };
+  skinTone: 'warm' | 'cool' | 'neutral';
+  bodyShape: 'pear' | 'apple' | 'hourglass' | 'rectangle' | 'inverted-triangle';
+  faceShape: 'oval' | 'round' | 'square' | 'heart' | 'diamond';
+  confidence: number;
+}
+
+export interface StyleRecommendation {
+  item: ClothingItem;
+  score: number;
+  reasons: string[];
+  styling_tips: string[];
+  occasion_match: number;
+  color_harmony: number;
+  fit_prediction: number;
+}
+
+export interface VirtualTryOnResult {
+  processedImageUrl: string;
+  fitAnalysis: {
+    overall_fit: 'excellent' | 'good' | 'fair' | 'poor';
+    size_recommendation: string;
+    adjustments_needed: string[];
+    confidence: number;
+  };
+  processingTime: number;
+}
