@@ -1,79 +1,71 @@
 import express from 'express';
-import multer from 'multer';
-import { v4 as uuidv4 } from 'uuid';
-import path from 'path';
 import { body, validationResult } from 'express-validator';
-import { pool } from '../config/database';
-import { asyncHandler, createError } from '../middleware/errorHandler';
-import { authenticateToken, AuthRequest } from '../middleware/auth';
+import { pool } from '../config/database.js';
+import { asyncHandler, createError } from '../middleware/errorHandler.js';
+import { authenticateToken, AuthRequest } from '../middleware/auth.js';
+import { uploadUserPhoto, getFileUrl } from '../middleware/upload.js';
+import { v4 as uuidv4 } from 'uuid';
 
 const router = express.Router();
 
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/user-photos/');
-  },
-  filename: (req, file, cb) => {
-    const uniqueName = `${uuidv4()}${path.extname(file.originalname)}`;
-    cb(null, uniqueName);
-  }
-});
-
-const upload = multer({
-  storage,
-  limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
-  },
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-    if (allowedTypes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Invalid file type. Only JPEG, PNG, and WebP are allowed.'));
-    }
-  }
-});
-
 // Upload user photo
-router.post('/upload-photo', authenticateToken, upload.single('photo'), 
+router.post('/upload-photo', authenticateToken, uploadUserPhoto, 
 asyncHandler(async (req: AuthRequest, res: express.Response) => {
   if (!req.file) {
     throw createError('No photo uploaded', 400);
   }
 
-  const photoUrl = `/uploads/user-photos/${req.file.filename}`;
+  const photoUrl = getFileUrl(req, req.file.filename, 'user-photos');
 
   // Log photo upload event
   await pool.query(
-    `INSERT INTO analytics_events (user_id, brand_id, event_type, event_data) 
-     VALUES ($1, $2, 'photo_uploaded', $3)`,
-    [req.user?.id, req.user?.brandId, JSON.stringify({ photoUrl, fileSize: req.file.size })]
+    `INSERT INTO analytics_events (user_id, brand_id, event_type, event_data, ip_address) 
+     VALUES ($1, $2, 'photo_uploaded', $3, $4)`,
+    [
+      req.user?.id, 
+      req.user?.brandId, 
+      JSON.stringify({ 
+        photoUrl, 
+        fileSize: req.file.size,
+        originalName: req.file.originalname,
+        mimeType: req.file.mimetype
+      }), 
+      req.ip
+    ]
   );
 
   res.json({
     message: 'Photo uploaded successfully',
-    photoUrl
+    photoUrl,
+    fileInfo: {
+      size: req.file.size,
+      type: req.file.mimetype,
+      originalName: req.file.originalname
+    }
   });
 }));
 
 // Create try-on session
 router.post('/session', authenticateToken, [
-  body('userPhotoUrl').isString().notEmpty(),
-  body('clothingItems').isArray().isLength({ min: 1, max: 5 }),
-  body('lightingSettings').isObject()
+  body('userPhotoUrl').isString().notEmpty().withMessage('User photo URL is required'),
+  body('clothingItems').isArray({ min: 1, max: 5 }).withMessage('1-5 clothing items required'),
+  body('lightingSettings').isObject().withMessage('Lighting settings must be an object'),
+  body('lightingSettings.brightness').optional().isInt({ min: 20, max: 150 }),
+  body('lightingSettings.contrast').optional().isInt({ min: 50, max: 150 }),
+  body('lightingSettings.warmth').optional().isInt({ min: 0, max: 100 }),
+  body('lightingSettings.scenario').optional().isIn(['natural', 'indoor', 'evening', 'bright', 'warm', 'cool'])
 ], asyncHandler(async (req: AuthRequest, res: express.Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    throw createError('Validation failed', 400);
+    throw createError('Validation failed: ' + errors.array().map(e => e.msg).join(', '), 400);
   }
 
   const { userPhotoUrl, clothingItems, lightingSettings } = req.body;
 
-  // Validate clothing items exist
+  // Validate clothing items exist and are active
   const itemIds = clothingItems.map((item: any) => item.id);
   const validItems = await pool.query(
-    'SELECT id FROM clothing_items WHERE id = ANY($1) AND is_active = true',
+    'SELECT id, name, brand_id FROM clothing_items WHERE id = ANY($1) AND is_active = true',
     [itemIds]
   );
 
@@ -91,25 +83,30 @@ router.post('/session', authenticateToken, [
 
   const session = sessionResult.rows[0];
 
-  // In a real implementation, this would trigger AI processing
-  // For now, we'll simulate the process
+  // Simulate AI processing (in production, this would call actual AI service)
   const resultImageUrl = await simulateVirtualTryOn(userPhotoUrl, clothingItems, lightingSettings);
 
   // Update session with result
   await pool.query(
-    'UPDATE try_on_sessions SET result_image_url = $1 WHERE id = $2',
-    [resultImageUrl, session.id]
+    'UPDATE try_on_sessions SET result_image_url = $1, session_duration = $2 WHERE id = $3',
+    [resultImageUrl, Math.floor(Math.random() * 300) + 30, session.id] // Random duration 30-330 seconds
   );
 
   // Log try-on event
   await pool.query(
-    `INSERT INTO analytics_events (user_id, brand_id, event_type, event_data) 
-     VALUES ($1, $2, 'try_on_session_created', $3)`,
-    [req.user?.id, req.user?.brandId, JSON.stringify({ 
-      sessionId: session.id, 
-      itemCount: clothingItems.length,
-      lightingScenario: lightingSettings.scenario
-    })]
+    `INSERT INTO analytics_events (user_id, brand_id, event_type, event_data, ip_address) 
+     VALUES ($1, $2, 'try_on_session_created', $3, $4)`,
+    [
+      req.user?.id, 
+      req.user?.brandId, 
+      JSON.stringify({ 
+        sessionId: session.id, 
+        itemCount: clothingItems.length,
+        lightingScenario: lightingSettings.scenario || 'natural',
+        itemIds: itemIds
+      }),
+      req.ip
+    ]
   );
 
   res.status(201).json({
@@ -210,12 +207,48 @@ asyncHandler(async (req: AuthRequest, res: express.Response) => {
 
   // Log conversion event
   await pool.query(
-    `INSERT INTO analytics_events (user_id, brand_id, event_type, event_data) 
-     VALUES ($1, $2, 'try_on_converted', $3)`,
-    [req.user?.id, req.user?.brandId, JSON.stringify({ sessionId: id })]
+    `INSERT INTO analytics_events (user_id, brand_id, event_type, event_data, ip_address) 
+     VALUES ($1, $2, 'try_on_converted', $3, $4)`,
+    [
+      req.user?.id, 
+      req.user?.brandId, 
+      JSON.stringify({ sessionId: id }),
+      req.ip
+    ]
   );
 
-  res.json({ message: 'Session marked as converted successfully' });
+  res.json({ 
+    message: 'Session marked as converted successfully',
+    session: result.rows[0]
+  });
+}));
+
+// Get try-on statistics for user
+router.get('/stats', authenticateToken,
+asyncHandler(async (req: AuthRequest, res: express.Response) => {
+  const statsResult = await pool.query(`
+    SELECT 
+      COUNT(*) as total_sessions,
+      COUNT(CASE WHEN converted THEN 1 END) as converted_sessions,
+      AVG(session_duration) as avg_duration,
+      COUNT(CASE WHEN created_at >= NOW() - INTERVAL '30 days' THEN 1 END) as sessions_last_30_days
+    FROM try_on_sessions 
+    WHERE user_id = $1
+  `, [req.user?.id]);
+
+  const stats = statsResult.rows[0];
+
+  res.json({
+    stats: {
+      totalSessions: parseInt(stats.total_sessions),
+      convertedSessions: parseInt(stats.converted_sessions),
+      conversionRate: stats.total_sessions > 0 
+        ? ((stats.converted_sessions / stats.total_sessions) * 100).toFixed(1)
+        : '0.0',
+      avgDuration: stats.avg_duration ? Math.round(stats.avg_duration) : 0,
+      sessionsLast30Days: parseInt(stats.sessions_last_30_days)
+    }
+  });
 }));
 
 // Simulate virtual try-on processing (replace with actual AI service)
@@ -230,8 +263,12 @@ async function simulateVirtualTryOn(
   // 3. Generate a composite image
   // 4. Return the URL of the processed image
   
-  // For demo purposes, return a placeholder
-  return `/uploads/try-on-results/${uuidv4()}.jpg`;
+  // Simulate processing delay
+  await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
+  
+  // For demo purposes, return a placeholder URL
+  // In production, this would be the actual processed image URL
+  return `${userPhotoUrl}?processed=${Date.now()}&items=${clothingItems.length}`;
 }
 
 export default router;
