@@ -1,8 +1,17 @@
 import { Pool } from 'pg';
 import dotenv from 'dotenv';
+import Redis from 'ioredis';
 
 dotenv.config();
 
+// Redis configuration for caching
+export const redis = new Redis({
+  host: process.env.REDIS_HOST || 'localhost',
+  port: parseInt(process.env.REDIS_PORT || '6379'),
+  password: process.env.REDIS_PASSWORD,
+  retryDelayOnFailover: 100,
+  maxRetriesPerRequest: 3
+});
 // Database configuration
 const dbConfig = {
   host: process.env.DB_HOST || 'localhost',
@@ -11,9 +20,15 @@ const dbConfig = {
   user: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASSWORD || 'password',
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-  max: 20,
+  max: 50,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
+  // Connection pooling improvements
+  acquireTimeoutMillis: 60000,
+  createTimeoutMillis: 30000,
+  destroyTimeoutMillis: 5000,
+  reapIntervalMillis: 1000,
+  createRetryIntervalMillis: 200
 };
 
 // Create connection pool
