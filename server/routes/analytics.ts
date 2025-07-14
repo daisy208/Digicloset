@@ -3,8 +3,181 @@ import { query, validationResult } from 'express-validator';
 import { pool } from '../config/database';
 import { asyncHandler, createError } from '../middleware/errorHandler';
 import { authenticateToken, AuthRequest, requireRole } from '../middleware/auth';
+import { redis } from '../config/database';
 
 const router = express.Router();
+
+// Store analytics event
+router.post('/events', asyncHandler(async (req: express.Request, res: express.Response) => {
+  const { eventName, properties, userId, sessionId } = req.body;
+
+  try {
+    // Store in database
+    await pool.query(`
+      INSERT INTO analytics_events (user_id, event_type, event_data, session_id, ip_address, user_agent)
+      VALUES ($1, $2, $3, $4, $5, $6)
+    `, [
+      userId || null,
+      eventName,
+      JSON.stringify(properties),
+      sessionId,
+      req.ip,
+      req.get('User-Agent')
+    ]);
+
+    // Store in Redis for real-time analytics
+    const eventKey = `realtime:events:${Date.now()}`;
+    await redis.setex(eventKey, 3600, JSON.stringify({
+      eventName,
+      properties,
+      userId,
+      sessionId,
+      timestamp: new Date().toISOString()
+    }));
+
+    // Update real-time counters
+    const today = new Date().toISOString().split('T')[0];
+    await redis.incr(`realtime:${eventName}:${today}`);
+    await redis.expire(`realtime:${eventName}:${today}`, 86400); // 24 hours
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Failed to store analytics event:', error);
+    res.status(500).json({ error: 'Failed to store event' });
+  }
+}));
+
+// Get real-time metrics
+router.get('/realtime', asyncHandler(async (req: express.Request, res: express.Response) => {
+  try {
+    const now = new Date();
+    const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
+    
+    // Get active users (users with events in last 30 minutes)
+    const activeUsersResult = await pool.query(`
+      SELECT COUNT(DISTINCT user_id) as active_users
+      FROM analytics_events 
+      WHERE created_at >= $1 AND user_id IS NOT NULL
+    `, [thirtyMinutesAgo]);
+
+    // Get page views
+    const pageViewsResult = await pool.query(`
+      SELECT COUNT(*) as page_views
+      FROM analytics_events 
+      WHERE event_type = 'page_view' AND created_at >= $1
+    `, [thirtyMinutesAgo]);
+
+    // Get try-ons
+    const tryOnsResult = await pool.query(`
+      SELECT COUNT(*) as try_ons
+      FROM analytics_events 
+      WHERE event_type = 'try_on_started' AND created_at >= $1
+    `, [thirtyMinutesAgo]);
+
+    // Get conversions
+    const conversionsResult = await pool.query(`
+      SELECT COUNT(*) as conversions
+      FROM analytics_events 
+      WHERE event_type = 'conversion' AND created_at >= $1
+    `, [thirtyMinutesAgo]);
+
+    // Calculate conversion rate
+    const tryOns = parseInt(tryOnsResult.rows[0].try_ons);
+    const conversions = parseInt(conversionsResult.rows[0].conversions);
+    const conversionRate = tryOns > 0 ? (conversions / tryOns) * 100 : 0;
+
+    // Get top pages
+    const topPagesResult = await pool.query(`
+      SELECT 
+        event_data->>'page_name' as page,
+        COUNT(*) as views
+      FROM analytics_events 
+      WHERE event_type = 'page_view' 
+        AND created_at >= $1
+        AND event_data->>'page_name' IS NOT NULL
+      GROUP BY event_data->>'page_name'
+      ORDER BY views DESC
+      LIMIT 5
+    `, [thirtyMinutesAgo]);
+
+    // Get user flow
+    const userFlowResult = await pool.query(`
+      SELECT 
+        event_type as step,
+        COUNT(DISTINCT user_id) as users
+      FROM analytics_events 
+      WHERE created_at >= $1 
+        AND user_id IS NOT NULL
+        AND event_type IN ('page_view', 'try_on_started', 'try_on_completed', 'conversion')
+      GROUP BY event_type
+      ORDER BY 
+        CASE event_type
+          WHEN 'page_view' THEN 1
+          WHEN 'try_on_started' THEN 2
+          WHEN 'try_on_completed' THEN 3
+          WHEN 'conversion' THEN 4
+        END
+    `, [thirtyMinutesAgo]);
+
+    // Get recent events for live feed
+    const recentEventsResult = await pool.query(`
+      SELECT 
+        event_type,
+        created_at,
+        COALESCE(event_data->>'user_name', 'Anonymous') as user_name
+      FROM analytics_events 
+      WHERE created_at >= $1
+      ORDER BY created_at DESC
+      LIMIT 20
+    `, [thirtyMinutesAgo]);
+
+    // Calculate session metrics
+    const sessionMetricsResult = await pool.query(`
+      SELECT 
+        AVG(EXTRACT(EPOCH FROM (MAX(created_at) - MIN(created_at)))) as avg_session_duration,
+        COUNT(CASE WHEN event_count = 1 THEN 1 END)::float / COUNT(*)::float * 100 as bounce_rate
+      FROM (
+        SELECT 
+          session_id,
+          COUNT(*) as event_count,
+          MIN(created_at) as session_start,
+          MAX(created_at) as session_end
+        FROM analytics_events 
+        WHERE created_at >= $1 AND session_id IS NOT NULL
+        GROUP BY session_id
+      ) sessions
+    `, [thirtyMinutesAgo]);
+
+    const metrics = {
+      activeUsers: parseInt(activeUsersResult.rows[0].active_users),
+      pageViews: parseInt(pageViewsResult.rows[0].page_views),
+      tryOns,
+      conversions,
+      conversionRate,
+      avgSessionDuration: parseFloat(sessionMetricsResult.rows[0]?.avg_session_duration || 0),
+      bounceRate: parseFloat(sessionMetricsResult.rows[0]?.bounce_rate || 0),
+      topPages: topPagesResult.rows.map(row => ({
+        page: row.page,
+        views: parseInt(row.views)
+      })),
+      userFlow: userFlowResult.rows.map(row => ({
+        step: row.step,
+        users: parseInt(row.users),
+        dropoff: 0 // Calculate dropoff rate
+      })),
+      realtimeEvents: recentEventsResult.rows.map(row => ({
+        timestamp: row.created_at,
+        event: row.event_type,
+        user: row.user_name
+      }))
+    };
+
+    res.json(metrics);
+  } catch (error) {
+    console.error('Failed to fetch real-time metrics:', error);
+    res.status(500).json({ error: 'Failed to fetch metrics' });
+  }
+}));
 
 // Get analytics dashboard data
 router.get('/dashboard', authenticateToken, [
