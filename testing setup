@@ -1,0 +1,64 @@
+// Unit tests with Jest and React Testing Library
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { VirtualTryOn } from '../components/VirtualTryOn';
+
+describe('VirtualTryOn Component', () => {
+  const mockProps = {
+    userPhoto: 'test-photo.jpg',
+    selectedItems: [],
+    lightingSettings: { brightness: 100, contrast: 100, warmth: 50, scenario: 'natural', intensity: 80 },
+    onRemoveItem: jest.fn()
+  };
+
+  test('renders without user photo', () => {
+    render(<VirtualTryOn {...mockProps} userPhoto="" />);
+    expect(screen.getByText('Upload a photo to start')).toBeInTheDocument();
+  });
+
+  test('processes virtual try-on', async () => {
+    render(<VirtualTryOn {...mockProps} />);
+    
+    const exportButton = screen.getByText('Export');
+    fireEvent.click(exportButton);
+    
+    await waitFor(() => {
+      expect(screen.getByText('Processing...')).toBeInTheDocument();
+    });
+  });
+});
+
+// E2E tests with Playwright
+import { test, expect } from '@playwright/test';
+
+test('complete virtual try-on flow', async ({ page }) => {
+  await page.goto('/app');
+  
+  // Upload photo
+  await page.setInputFiles('input[type="file"]', 'test-photo.jpg');
+  
+  // Select clothing item
+  await page.click('[data-testid="clothing-item-1"]');
+  
+  // Adjust lighting
+  await page.click('[data-testid="lighting-tab"]');
+  await page.fill('[data-testid="brightness-slider"]', '120');
+  
+  // Export result
+  await page.click('[data-testid="export-button"]');
+  
+  await expect(page.locator('[data-testid="export-success"]')).toBeVisible();
+});
+
+// Performance tests
+import { performance } from 'perf_hooks';
+
+describe('Performance Tests', () => {
+  test('AI analysis completes within 5 seconds', async () => {
+    const start = performance.now();
+    
+    await aiService.analyzeUserPhoto('test-image-data');
+    
+    const duration = performance.now() - start;
+    expect(duration).toBeLessThan(5000);
+  });
+});
