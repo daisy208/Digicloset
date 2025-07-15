@@ -1,0 +1,53 @@
+import rateLimit from 'express-rate-limit';
+import slowDown from 'express-slow-down';
+import { body, validationResult } from 'express-validator';
+
+// Advanced rate limiting
+const createAdvancedRateLimit = (windowMs: number, max: number, skipSuccessfulRequests = false) => {
+  return rateLimit({
+    windowMs,
+    max,
+    skipSuccessfulRequests,
+    keyGenerator: (req) => {
+      // Different limits for different user types
+      const user = req.user;
+      if (user?.role === 'admin') return `admin:${req.ip}`;
+      if (user?.role === 'brand_admin') return `brand:${user.brandId}:${req.ip}`;
+      return `user:${req.ip}`;
+    },
+    handler: (req, res) => {
+      res.status(429).json({
+        error: 'Too many requests',
+        retryAfter: Math.round(windowMs / 1000)
+      });
+    }
+  });
+};
+
+// Input sanitization middleware
+const sanitizeInput = [
+  body('*').trim().escape(),
+  body('email').isEmail().normalizeEmail(),
+  body('password').isLength({ min: 8 }).matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/),
+  (req: Request, res: Response, next: NextFunction) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    next();
+  }
+];
+
+// Security logging
+class SecurityLogger {
+  static logSecurityEvent(event: string, details: any, req: Request) {
+    console.log(JSON.stringify({
+      timestamp: new Date().toISOString(),
+      event,
+      ip: req.ip,
+      userAgent: req.get('User-Agent'),
+      userId: req.user?.id,
+      details
+    }));
+  }
+}
