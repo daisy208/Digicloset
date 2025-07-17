@@ -12,7 +12,6 @@ Transform your fashion business with our enterprise-grade virtual try-on solutio
 - **Enterprise Analytics** - Comprehensive business intelligence dashboard
 - **White-Label Ready** - Fully customizable branding
 - **Multi-Platform Integration** - Easy e-commerce platform integration
-
 ## 🚀 Quick Start
 
 ### Prerequisites
