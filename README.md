@@ -7,9 +7,12 @@ Transform your fashion business with our enterprise-grade virtual try-on solutio
 ## ✨ Features
 
 ### Frontend Features
-- **AI-Powered Virtual Try-On** - Advanced computer vision for realistic clothing visualization
-- **Smart Style Recommendations** - Machine learning-driven personalization
+- **Real AI-Powered Virtual Try-On** - Advanced computer vision using MediaPipe and TensorFlow.js for realistic clothing visualization
+- **Smart Style Recommendations** - OpenAI GPT-4 and custom ML models for personalized fashion advice
 - **Dynamic Lighting Engine** - Realistic lighting simulation
+- **Real-time Body Analysis** - MediaPipe pose detection for accurate body measurements
+- **Face Analysis** - Advanced skin tone and face shape detection
+- **Image Quality Enhancement** - AI-powered image processing and optimization
 - **Enterprise Analytics** - Comprehensive business intelligence dashboard
 - **White-Label Ready** - Fully customizable branding
 - **Multi-Platform Integration** - Easy e-commerce platform integration
@@ -177,6 +180,12 @@ src/
 Create a `.env` file in the root directory:
 
 ```env
+# AI Service Configuration
+VITE_USE_REAL_AI=true
+VITE_OPENAI_API_KEY=your-openai-api-key
+VITE_AZURE_VISION_KEY=your-azure-vision-key
+VITE_MEDIAPIPE_API_KEY=your-mediapipe-key
+
 # Server Configuration
 PORT=5000
 NODE_ENV=development
@@ -194,6 +203,24 @@ JWT_SECRET=your-super-secret-jwt-key
 # Frontend API URL
 VITE_API_URL=http://localhost:5000/api
 ```
+
+### AI Service Setup
+
+To enable real AI features, you'll need to configure the following services:
+
+1. **OpenAI API** - For advanced style recommendations
+   - Get your API key from [OpenAI Platform](https://platform.openai.com/api-keys)
+   - Set `VITE_OPENAI_API_KEY` in your `.env` file
+
+2. **MediaPipe** - For body pose detection and face analysis
+   - Models are loaded from CDN automatically
+   - No additional setup required
+
+3. **TensorFlow.js Models** - For custom ML features
+   - Place model files in `public/models/` directory
+   - Models will be loaded automatically when available
+
+**Note**: If AI services are not configured, the application will automatically fall back to demo mode with simulated results.
 
 ## 🎯 Enterprise Features
 
@@ -225,6 +252,8 @@ VITE_API_URL=http://localhost:5000/api
 
 ### Frontend
 - **Frontend**: React 18, TypeScript, Tailwind CSS
+- **AI/ML**: TensorFlow.js, MediaPipe, OpenAI GPT-4, Fabric.js
+- **Computer Vision**: Real-time pose detection, face analysis, image processing
 - **Charts**: Recharts
 - **Icons**: Lucide React
 - **Build Tool**: Vite
