@@ -9,6 +9,7 @@ import { AIAnalysisPanel } from './components/AIAnalysisPanel';
 import { SmartRecommendations } from './components/SmartRecommendations';
 import { OutfitGenerator } from './components/OutfitGenerator';
 import { ColorHarmonyTool } from './components/ColorHarmonyTool';
+import { AIServiceStatus } from './components/AIServiceStatus';
 import { ClothingItem, StylePreferences, LightingSettings } from './types';
 import { AIAnalysisResult } from './services/aiService';
 import { mockUser } from './utils/mockData';
@@ -142,6 +143,9 @@ function App() {
                 </div>
               </div>
             )}
+
+            {/* AI Service Status */}
+            <AIServiceStatus />
 
             {/* Quick Stats */}
             <div className="bg-white rounded-xl shadow-lg p-6">

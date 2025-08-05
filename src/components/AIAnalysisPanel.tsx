@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Brain, Camera, Zap, Target, Palette, Ruler } from 'lucide-react';
+import { Brain, Camera, Zap, Target, Palette, Ruler, Activity, AlertCircle } from 'lucide-react';
 import { aiService, AIAnalysisResult } from '../services/aiService';
+import { realAIService } from '../services/realAI';
 
 interface AIAnalysisPanelProps {
   userPhoto: string;
@@ -13,7 +14,22 @@ export const AIAnalysisPanel: React.FC<AIAnalysisPanelProps> = ({
 }) => {
   const [analysis, setAnalysis] = useState<AIAnalysisResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [aiServiceHealth, setAiServiceHealth] = useState<any>(null);
   const [error, setError] = useState<string>('');
+  const [useRealAI, setUseRealAI] = useState(import.meta.env.VITE_USE_REAL_AI === 'true');
+
+  useEffect(() => {
+    checkAIServiceHealth();
+  }, []);
+
+  const checkAIServiceHealth = async () => {
+    try {
+      const health = await aiService.checkServiceHealth();
+      setAiServiceHealth(health);
+    } catch (error) {
+      console.error('Failed to check AI service health:', error);
+    }
+  };
 
   const runAnalysis = async () => {
     if (!userPhoto) return;
@@ -56,6 +72,17 @@ export const AIAnalysisPanel: React.FC<AIAnalysisPanelProps> = ({
         <div className="flex items-center space-x-2">
           <Brain className="text-indigo-600" size={24} />
           <h3 className="text-lg font-semibold text-gray-800">AI Analysis</h3>
+          {aiServiceHealth && (
+            <div className="flex items-center space-x-1">
+              <Activity 
+                size={16} 
+                className={aiServiceHealth.realAI ? 'text-emerald-500' : 'text-yellow-500'} 
+              />
+              <span className="text-xs text-gray-600">
+                {aiServiceHealth.realAI ? 'Real AI' : 'Demo Mode'}
+              </span>
+            </div>
+          )}
         </div>
         
         {analysis && (
@@ -65,6 +92,18 @@ export const AIAnalysisPanel: React.FC<AIAnalysisPanelProps> = ({
           </div>
         )}
       </div>
+
+      {/* AI Service Status */}
+      {aiServiceHealth && !aiServiceHealth.realAI && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="flex items-center space-x-2">
+            <AlertCircle className="text-yellow-600" size={16} />
+            <p className="text-yellow-800 text-sm">
+              Running in demo mode. Configure real AI services for production-grade analysis.
+            </p>
+          </div>
+        </div>
+      )}
 
       {isAnalyzing && (
         <div className="text-center py-8">
@@ -76,6 +115,12 @@ export const AIAnalysisPanel: React.FC<AIAnalysisPanelProps> = ({
             <p>🔍 Detecting body measurements</p>
             <p>🎨 Analyzing skin tone</p>
             <p>📐 Identifying body shape</p>
+            {useRealAI && (
+              <>
+                <p>🤖 Running computer vision models</p>
+                <p>🧠 Processing with neural networks</p>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -152,9 +197,19 @@ export const AIAnalysisPanel: React.FC<AIAnalysisPanelProps> = ({
           <button
             onClick={runAnalysis}
             disabled={isAnalyzing}
-            className="w-full py-2 px-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-2 px-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
           >
-            {isAnalyzing ? 'Analyzing...' : 'Refresh Analysis'}
+            {isAnalyzing ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                <span>Analyzing with AI...</span>
+              </>
+            ) : (
+              <>
+                <Brain size={16} />
+                <span>Run AI Analysis</span>
+              </>
+            )}
           </button>
         </div>
       )}

@@ -1,4 +1,5 @@
 import { ClothingItem, StylePreferences, LightingSettings } from '../types';
+import { realAIService, ComprehensiveAIAnalysis } from './realAI';
 
 export interface AIAnalysisResult {
   bodyMeasurements: {
@@ -36,16 +37,31 @@ export interface VirtualTryOnResult {
 }
 
 class AIService {
-  private apiKey: string;
-  private baseUrl: string;
+  private useRealAI: boolean;
 
   constructor() {
-    this.apiKey = import.meta.env.VITE_AI_API_KEY || 'demo-key';
-    this.baseUrl = import.meta.env.VITE_AI_SERVICE_URL || 'https://api.virtualfit-ai.com';
+    this.useRealAI = import.meta.env.VITE_USE_REAL_AI === 'true';
+    
+    if (this.useRealAI) {
+      realAIService.initialize().catch(error => {
+        console.warn('Real AI initialization failed, falling back to mock:', error);
+        this.useRealAI = false;
+      });
+    }
   }
 
   // Analyze user photo for body measurements and characteristics
   async analyzeUserPhoto(imageData: string): Promise<AIAnalysisResult> {
+    if (this.useRealAI) {
+      try {
+        const analysis = await realAIService.performCompleteAnalysis(imageData);
+        return this.convertToAIAnalysisResult(analysis);
+      } catch (error) {
+        console.warn('Real AI analysis failed, using fallback:', error);
+        // Fall through to mock implementation
+      }
+    }
+
     try {
       // Simulate AI processing with realistic delay
       await this.simulateProcessing(2000);
@@ -79,6 +95,21 @@ class AIService {
     availableItems: ClothingItem[],
     occasion?: string
   ): Promise<StyleRecommendation[]> {
+    if (this.useRealAI) {
+      try {
+        const comprehensiveAnalysis = this.convertToComprehensiveAnalysis(userAnalysis);
+        return await realAIService.getPersonalizedRecommendations(
+          comprehensiveAnalysis,
+          preferences,
+          availableItems,
+          occasion
+        );
+      } catch (error) {
+        console.warn('Real AI recommendations failed, using fallback:', error);
+        // Fall through to mock implementation
+      }
+    }
+
     try {
       await this.simulateProcessing(1500);
 
@@ -115,6 +146,21 @@ class AIService {
     lightingSettings: LightingSettings,
     userAnalysis?: AIAnalysisResult
   ): Promise<VirtualTryOnResult> {
+    if (this.useRealAI) {
+      try {
+        const comprehensiveAnalysis = userAnalysis ? this.convertToComprehensiveAnalysis(userAnalysis) : undefined;
+        return await realAIService.createVirtualTryOn(
+          userPhoto,
+          clothingItems,
+          lightingSettings,
+          comprehensiveAnalysis
+        );
+      } catch (error) {
+        console.warn('Real AI virtual try-on failed, using fallback:', error);
+        // Fall through to mock implementation
+      }
+    }
+
     try {
       const startTime = Date.now();
       await this.simulateProcessing(3000);
@@ -145,6 +191,21 @@ class AIService {
     preferences: StylePreferences,
     occasion?: string
   ): Promise<ClothingItem[][]> {
+    if (this.useRealAI) {
+      try {
+        const comprehensiveAnalysis = this.convertToComprehensiveAnalysis(userAnalysis);
+        return await realAIService.generateCompleteOutfits(
+          items,
+          comprehensiveAnalysis,
+          preferences,
+          occasion
+        );
+      } catch (error) {
+        console.warn('Real AI outfit generation failed, using fallback:', error);
+        // Fall through to mock implementation
+      }
+    }
+
     try {
       await this.simulateProcessing(1000);
 
@@ -234,6 +295,85 @@ class AIService {
     return colorSuggestions
       .sort((a, b) => b.confidence - a.confidence)
       .slice(0, 5);
+  }
+
+  // Conversion methods between AI result formats
+  private convertToAIAnalysisResult(analysis: ComprehensiveAIAnalysis): AIAnalysisResult {
+    return {
+      bodyMeasurements: analysis.bodyAnalysis.measurements,
+      skinTone: analysis.faceAnalysis.skinTone,
+      bodyShape: analysis.bodyAnalysis.bodyShape as any,
+      faceShape: analysis.faceAnalysis.faceShape,
+      confidence: (analysis.bodyAnalysis.confidence + analysis.faceAnalysis.confidence) / 2
+    };
+  }
+
+  private convertToComprehensiveAnalysis(analysis: AIAnalysisResult): ComprehensiveAIAnalysis {
+    return {
+      bodyAnalysis: {
+        keypoints: this.generateMockKeypoints(),
+        measurements: analysis.bodyMeasurements,
+        bodyShape: analysis.bodyShape,
+        confidence: analysis.confidence
+      },
+      faceAnalysis: {
+        skinTone: analysis.skinTone,
+        faceShape: analysis.faceShape,
+        skinColor: { r: 200, g: 180, b: 160, hex: '#c8b4a0' },
+        confidence: analysis.confidence
+      },
+      imageQuality: {
+        sharpness: 80,
+        brightness: 75,
+        contrast: 70,
+        noise: 15,
+        overall: 75
+      },
+      processingTime: 1000
+    };
+  }
+
+  private generateMockKeypoints(): any {
+    // Generate mock keypoints for fallback
+    return {
+      nose: { x: 0.5, y: 0.2, visibility: 0.9 },
+      leftShoulder: { x: 0.4, y: 0.35, visibility: 0.9 },
+      rightShoulder: { x: 0.6, y: 0.35, visibility: 0.9 },
+      leftHip: { x: 0.45, y: 0.6, visibility: 0.9 },
+      rightHip: { x: 0.55, y: 0.6, visibility: 0.9 },
+      leftElbow: { x: 0.35, y: 0.45, visibility: 0.8 },
+      rightElbow: { x: 0.65, y: 0.45, visibility: 0.8 },
+      leftWrist: { x: 0.3, y: 0.55, visibility: 0.8 },
+      rightWrist: { x: 0.7, y: 0.55, visibility: 0.8 },
+      leftKnee: { x: 0.45, y: 0.75, visibility: 0.8 },
+      rightKnee: { x: 0.55, y: 0.75, visibility: 0.8 },
+      leftAnkle: { x: 0.45, y: 0.9, visibility: 0.8 },
+      rightAnkle: { x: 0.55, y: 0.9, visibility: 0.8 }
+    };
+  }
+
+  // Health check for AI services
+  async checkServiceHealth(): Promise<{
+    realAI: boolean;
+    fallback: boolean;
+    overall: boolean;
+  }> {
+    let realAIHealth = false;
+    
+    if (this.useRealAI) {
+      try {
+        const health = await realAIService.getServiceHealth();
+        realAIHealth = health.overall;
+      } catch (error) {
+        console.error('Real AI health check failed:', error);
+      }
+    }
+
+    return {
+      realAI: realAIHealth,
+      fallback: true, // Mock implementation always available
+      overall: realAIHealth || true // At least fallback is available
+    };
   }
 
   // Private helper methods

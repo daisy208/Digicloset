@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Star, TrendingUp, Heart, ShoppingBag } from 'lucide-react';
+import { Sparkles, Star, TrendingUp, Heart, ShoppingBag, Brain, Zap } from 'lucide-react';
 import { aiService, StyleRecommendation, AIAnalysisResult } from '../services/aiService';
 import { ClothingItem, StylePreferences } from '../types';
 
@@ -21,6 +21,7 @@ export const SmartRecommendations: React.FC<SmartRecommendationsProps> = ({
   const [recommendations, setRecommendations] = useState<StyleRecommendation[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedOccasion, setSelectedOccasion] = useState<string>('casual');
+  const [aiInsights, setAiInsights] = useState<string[]>([]);
 
   const occasions = [
     { id: 'work', label: 'Work', icon: '💼' },
@@ -34,6 +35,7 @@ export const SmartRecommendations: React.FC<SmartRecommendationsProps> = ({
     if (!userAnalysis) return;
 
     setIsLoading(true);
+    setAiInsights([]);
     try {
       const recs = await aiService.generateRecommendations(
         userAnalysis,
@@ -42,11 +44,42 @@ export const SmartRecommendations: React.FC<SmartRecommendationsProps> = ({
         selectedOccasion
       );
       setRecommendations(recs);
+      
+      // Generate AI insights about the recommendations
+      const insights = this.generateAIInsights(recs, userAnalysis, preferences);
+      setAiInsights(insights);
     } catch (error) {
       console.error('Failed to generate recommendations:', error);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const generateAIInsights = (
+    recs: StyleRecommendation[],
+    analysis: AIAnalysisResult,
+    prefs: StylePreferences
+  ): string[] => {
+    const insights = [];
+
+    if (recs.length > 0) {
+      const avgScore = recs.reduce((sum, rec) => sum + rec.score, 0) / recs.length;
+      insights.push(`AI found ${recs.length} items with ${Math.round(avgScore)}% compatibility`);
+    }
+
+    const bodyShapeItems = recs.filter(rec => 
+      rec.reasons.some(reason => reason.toLowerCase().includes(analysis.bodyShape))
+    );
+    if (bodyShapeItems.length > 0) {
+      insights.push(`${bodyShapeItems.length} items specifically chosen for your ${analysis.bodyShape} body shape`);
+    }
+
+    const colorMatches = recs.filter(rec => rec.color_harmony > 80);
+    if (colorMatches.length > 0) {
+      insights.push(`${colorMatches.length} items have excellent color harmony with your ${analysis.skinTone} skin tone`);
+    }
+
+    return insights;
   };
 
   useEffect(() => {
@@ -82,6 +115,9 @@ export const SmartRecommendations: React.FC<SmartRecommendationsProps> = ({
         <div className="flex items-center space-x-2">
           <Sparkles className="text-indigo-600" size={24} />
           <h3 className="text-lg font-semibold text-gray-800">AI Recommendations</h3>
+          <div className="bg-gradient-to-r from-purple-100 to-pink-100 px-2 py-1 rounded-full">
+            <span className="text-xs font-medium text-purple-700">AI Powered</span>
+          </div>
         </div>
         
         <button
@@ -115,12 +151,36 @@ export const SmartRecommendations: React.FC<SmartRecommendationsProps> = ({
         </div>
       </div>
 
+      {/* AI Insights */}
+      {aiInsights.length > 0 && (
+        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-4">
+          <div className="flex items-center space-x-2 mb-3">
+            <Brain className="text-indigo-600" size={16} />
+            <h4 className="font-medium text-indigo-800">AI Insights</h4>
+          </div>
+          <div className="space-y-2">
+            {aiInsights.map((insight, index) => (
+              <div key={index} className="flex items-start space-x-2">
+                <Zap className="text-yellow-500 mt-0.5" size={12} />
+                <p className="text-sm text-indigo-700">{insight}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Loading State */}
       {isLoading && (
         <div className="text-center py-8">
           <div className="inline-flex items-center space-x-3">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
-            <span className="text-gray-600">Generating AI recommendations...</span>
+            <span className="text-gray-600">AI is analyzing your preferences...</span>
+          </div>
+          <div className="mt-4 space-y-1 text-xs text-gray-500">
+            <p>🧠 Processing style preferences</p>
+            <p>🎨 Analyzing color compatibility</p>
+            <p>📏 Matching body measurements</p>
+            <p>✨ Generating personalized suggestions</p>
           </div>
         </div>
       )}
