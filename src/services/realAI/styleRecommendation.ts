@@ -14,17 +14,20 @@ export interface StyleRecommendationEngine {
 export class OpenAIStyleRecommendation implements StyleRecommendationEngine {
   private openai: OpenAI;
   private model = 'gpt-4-turbo-preview';
+  private isConfigured: boolean;
 
   constructor() {
     const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-    if (!apiKey) {
-      throw new Error('OpenAI API key not configured');
+    this.isConfigured = Boolean(apiKey && apiKey.trim() !== '');
+    
+    if (this.isConfigured) {
+      this.openai = new OpenAI({
+        apiKey,
+        dangerouslyAllowBrowser: true // Note: In production, use a backend proxy
+      });
+    } else {
+      console.warn('OpenAI API key not configured. Style recommendations will use fallback method.');
     }
-
-    this.openai = new OpenAI({
-      apiKey,
-      dangerouslyAllowBrowser: true // Note: In production, use a backend proxy
-    });
   }
 
   async generateRecommendations(
@@ -33,6 +36,12 @@ export class OpenAIStyleRecommendation implements StyleRecommendationEngine {
     availableItems: ClothingItem[],
     occasion?: string
   ): Promise<any[]> {
+    // If OpenAI is not configured, use fallback recommendations
+    if (!this.isConfigured) {
+      console.log('Using fallback recommendations due to missing OpenAI API key');
+      return this.generateFallbackRecommendations(availableItems);
+    }
+
     try {
       const prompt = this.buildStylePrompt(userAnalysis, preferences, availableItems, occasion);
       
@@ -60,7 +69,8 @@ export class OpenAIStyleRecommendation implements StyleRecommendationEngine {
       return this.parseAIRecommendations(aiResponse, availableItems);
     } catch (error) {
       console.error('OpenAI recommendation failed:', error);
-      throw new Error('Failed to generate AI recommendations');
+      console.log('Falling back to rule-based recommendations');
+      return this.generateFallbackRecommendations(availableItems);
     }
   }
 
