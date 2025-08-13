@@ -1,4 +1,4 @@
-import { fabric } from 'fabric';
+import * as fabric from 'fabric';
 import { ClothingItem, LightingSettings } from '../../types';
 import { BodyMeasurements, PoseKeypoints } from './bodyAnalysis';
 
