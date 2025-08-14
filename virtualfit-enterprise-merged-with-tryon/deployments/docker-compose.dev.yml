@@ -1,0 +1,15 @@
+version: '3'
+services:
+  inference-service:
+    build:
+      context: ./services/inference-service
+      dockerfile: dockerfile.gpu
+    ports:
+      - '8000:8000'
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

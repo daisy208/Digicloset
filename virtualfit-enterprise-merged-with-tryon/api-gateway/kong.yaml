@@ -1,0 +1,8 @@
+routes:
+  - name: inference-route
+    paths:
+      - /inference
+    service: inference-service
+services:
+  - name: inference-service
+    url: http://inference-service:8000
