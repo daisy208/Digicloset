@@ -18,3 +18,23 @@ export default function BeforeAfter({ beforeUrl, afterUrl }: BeforeAfterProps) {
     </div>
   );
 }
+import React from "react";
+import ReactCompareImage from "react-compare-image";
+
+type BeforeAfterProps = {
+  beforeUrl: string;
+  afterUrl: string;
+};
+
+export default function BeforeAfter({ beforeUrl, afterUrl }: BeforeAfterProps) {
+  return (
+    <div className="w-full max-w-xl mx-auto rounded-lg overflow-hidden border border-gray-300">
+      <ReactCompareImage
+        leftImage={beforeUrl}
+        rightImage={afterUrl}
+        sliderLineColor="#2563eb"
+        sliderLineWidth={3}
+      />
+    </div>
+  );
+}
