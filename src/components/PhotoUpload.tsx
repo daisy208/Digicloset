@@ -1,3 +1,4 @@
+import BeforeAfter from "./BeforeAfter"; 
 import React, { useState, useRef } from 'react';
 import { Upload, Camera, X } from 'lucide-react';
 
