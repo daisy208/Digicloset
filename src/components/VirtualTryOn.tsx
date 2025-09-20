@@ -1,4 +1,5 @@
 import BeforeAfter from "./
+const [resultImage, setResultImage] = useState<string | null>(null);
 import React, { useState, useRef, useEffect } from 'react';
 import { Download, Share2, RotateCcw, Camera, Layers, Brain, Zap, Eye } from 'lucide-react';
 import { ClothingItem, LightingSettings } from '../types';
@@ -16,6 +17,7 @@ export const VirtualTryOn: React.FC<VirtualTryOnProps> = ({
   selectedItems,
   lightingSettings,
   onRemoveItem
+  setResultImage(result.processedImageUrl);
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -109,7 +111,14 @@ export const VirtualTryOn: React.FC<VirtualTryOnProps> = ({
             <Layers className="text-indigo-600" size={20} />
             <h3 className="text-lg font-semibold text-gray-800">Virtual Try-On</h3>
           </div>
-          
+     {/* Before/After Comparison */}
+{userPhoto && resultImage && (
+  <div className="p-4 border-t border-gray-200">
+    <h4 className="text-sm font-medium text-gray-700 mb-3">Before / After Comparison</h4>
+    <BeforeAfter beforeUrl={userPhoto} afterUrl={resultImage} />
+  </div>
+)}
+     
           <div className="flex items-center space-x-2">
             <button
               onClick={exportImage}
