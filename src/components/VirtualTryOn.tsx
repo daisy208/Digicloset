@@ -383,3 +383,15 @@ export const VirtualTryOn: React.FC<VirtualTryOnProps> = ({
     </div>
   );
 };
+import posthog from "posthog-js";
+
+// When user exports image
+posthog.capture("export_image", {
+  itemsSelected: selectedItems.length,
+  qualityScore,
+});
+
+// When user shares
+posthog.capture("share_image", {
+  itemsSelected: selectedItems.length,
+});
