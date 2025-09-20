@@ -1,3 +1,4 @@
+import BeforeAfter from "./
 import React, { useState, useRef, useEffect } from 'react';
 import { Download, Share2, RotateCcw, Camera, Layers, Brain, Zap, Eye } from 'lucide-react';
 import { ClothingItem, LightingSettings } from '../types';
