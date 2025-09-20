@@ -54,3 +54,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     />
   </React.StrictMode>
 );
+import posthog from "posthog-js";
+
+// Initialize PostHog (replace with your project key from PostHog dashboard)
+posthog.init("phc_YOUR_PROJECT_API_KEY", {
+  api_host: "https://app.posthog.com",
+});
