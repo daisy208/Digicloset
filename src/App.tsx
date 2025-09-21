@@ -269,3 +269,15 @@ function App() {
 
   return (/* your UI */);
 }
+import Auth from "./components/Auth";
+
+function App() {
+  return (
+    <div className="p-6">
+      <Auth />
+      {/* Your VirtualTryOn and rest of UI here */}
+    </div>
+  );
+}
+
+export default App;
