@@ -259,3 +259,13 @@ function App() {
 }
 
 export default App;
+import { useEffect } from "react";
+import posthog from "posthog-js";
+
+function App() {
+  useEffect(() => {
+    posthog.capture("$pageview");
+  }, []);
+
+  return (/* your UI */);
+}
