@@ -282,3 +282,29 @@ function App() {
 }
 
 export default App;
+import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
+import HistoryPage from "./pages/HistoryPage";
+import VirtualTryOn from "./components/VirtualTryOn";
+import Auth from "./components/Auth";
+
+function App() {
+  return (
+    <Router>
+      <div className="p-6 space-y-6">
+        <nav className="flex space-x-4 mb-4">
+          <Link to="/" className="text-indigo-600">Try-On</Link>
+          <Link to="/history" className="text-indigo-600">History</Link>
+        </nav>
+
+        <Auth />
+
+        <Routes>
+          <Route path="/" element={<VirtualTryOn />} />
+          <Route path="/history" element={<HistoryPage />} />
+        </Routes>
+      </div>
+    </Router>
+  );
+}
+
+export default App;
