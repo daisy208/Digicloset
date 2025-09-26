@@ -647,3 +647,41 @@ class AIService {
 
 export const aiService = new AIService();
 export default aiService;
+import axios from "axios";
+
+const REMOVE_BG_KEY = "fBmdsKDpj3sK2LsnvFbcoKcb";
+
+export const aiService = {
+  async processVirtualTryOn(userPhoto: string, selectedItems: any[], lighting: any) {
+    try {
+      // Step 1: Clean background
+      const formData = new FormData();
+      formData.append("image_file_b64", userPhoto.split(",")[1]);
+      formData.append("size", "auto");
+
+      const bgResponse = await axios.post(
+        "https://api.remove.bg/v1.0/removebg",
+        formData,
+        {
+          headers: { "X-Api-Key": REMOVE_BG_KEY },
+        }
+      );
+
+      const cleanedPhoto = `data:image/png;base64,${bgResponse.data.data.result_b64}`;
+
+      // Step 2: Fake cloth overlay for now
+      return {
+        processedImageUrl: cleanedPhoto, // will later add overlay logic
+        qualityScore: 85,
+        fitAnalysis: {
+          overall_fit: "good",
+          size_recommendation: "M",
+          adjustments_needed: ["Adjust shoulders slightly"],
+        },
+      };
+    } catch (error) {
+      console.error("AI Service Error:", error);
+      throw error;
+    }
+  },
+};
