@@ -43,6 +43,58 @@ export const VirtualTryOn: React.FC<VirtualTryOnProps> = ({
   const exportImage = async () => {
     setIsProcessing(true);
     setProcessingStage('Initializing AI processing...');
+    import { saveTryOn } from "../lib/saveTryOn";
+import { supabase } from "../lib/supabaseClient";
+
+...
+
+const exportImage = async () => {
+  setIsProcessing(true);
+  setProcessingStage("Initializing AI processing...");
+
+  try {
+    if (userPhoto && selectedItems.length > 0) {
+      setProcessingStage("Running AI services...");
+
+      const result = await aiService.processVirtualTryOn(
+        userPhoto,
+        selectedItems,
+        lightingSettings
+      );
+
+      setQualityScore(result.qualityScore || 85);
+      setFitAnalysis(result.fitAnalysis);
+      setPoseData(result.poseData);
+      setProcessedItems(result.processedItems);
+      setProcessedPhoto(result.processedImageUrl);
+
+      // 🔑 Get logged-in user
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (user) {
+        await saveTryOn(
+          user.id,
+          result.processedImageUrl,
+          selectedItems,
+          result.qualityScore,
+          result.fitAnalysis
+        );
+      }
+
+      setProcessingStage("Complete!");
+    }
+  } catch (error) {
+    console.error("Export failed:", error);
+    setProcessingStage("Export failed");
+  } finally {
+    setTimeout(() => {
+      setIsProcessing(false);
+      setProcessingStage("");
+    }, 1000);
+  }
+};
 
     try {
       if (userPhoto && selectedItems.length > 0) {
