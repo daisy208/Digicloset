@@ -181,25 +181,27 @@ class AIService {
     } catch (error) {
       console.error('Virtual try-on processing failed:', error);
       throw new Error('Failed to process virtual try-on. Please try again.');
-    }
-  }
+    const REPLICATE_API = "r8_KgS9lGQChjl1w9sPCONJ0YHdfXBobpj0k7LaT";
 
-  // Generate outfit combinations using AI
-  async generateOutfitCombinations(
-    items: ClothingItem[],
-    userAnalysis: AIAnalysisResult,
-    preferences: StylePreferences,
-    occasion?: string
-  ): Promise<ClothingItem[][]> {
-    if (this.useRealAI) {
-      try {
-        const comprehensiveAnalysis = this.convertToComprehensiveAnalysis(userAnalysis);
-        return await realAIService.generateCompleteOutfits(
-          items,
-          comprehensiveAnalysis,
-          preferences,
-          occasion
-        );
+async function detectPose(userPhoto: string) {
+  const response = await axios.post(
+    "https://api.replicate.com/v1/predictions",
+    {
+      version: "MEDIA_PIPE_POSE_MODEL_ID", // Replace with actual model ID
+      input: {
+        image: userPhoto,
+      },
+    },
+    {
+      headers: {
+        Authorization: `Token ${r8_KgS9lGQChjl1w9sPCONJ0YHdfXBobpj0k7LaT}`,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  return response.data; // contains pose keypoints
+}
       } catch (error) {
         console.warn('Real AI outfit generation failed, using fallback:', error);
         // Fall through to mock implementation
@@ -663,7 +665,7 @@ export const aiService = {
         "https://api.remove.bg/v1.0/removebg",
         formData,
         {
-          headers: { "X-Api-Key": REMOVE_BG_KEY },
+          headers: { "X-Api-Key": fBmdsKDpj3sK2LsnvFbcoKcb},
         }
       );
 
@@ -683,5 +685,18 @@ export const aiService = {
       console.error("AI Service Error:", error);
       throw error;
     }
-  },
+  }, 
 };
+const HF_API = "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";
+
+async function segmentCloth(clothingImage: string) {
+  const response = await axios.post(
+    "https://api-inference.huggingface.co/models/lamisa/cloth-segmentation",
+    { inputs: clothingImage },
+    {
+      headers: { Authorization: `Bearer ${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}` },
+    }
+  );
+
+  return response.data; // segmented cloth mask
+}
