@@ -1,3 +1,4 @@
+import Auth from "./components/Auth";
 import React, { useState } from 'react';
 import { Shirt, Sparkles, Sun, Camera, User } from 'lucide-react';
 import { PhotoUpload } from './components/PhotoUpload';
