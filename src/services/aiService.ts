@@ -700,3 +700,14 @@ async function segmentCloth(clothingImage: string) {
 
   return response.data; // segmented cloth mask
 }
+return {
+  processedImageUrl: cleanedPhoto,
+  qualityScore: 85,
+  fitAnalysis: {
+    overall_fit: "good",
+    size_recommendation: "M",
+    adjustments_needed: ["Adjust shoulders slightly"],
+  },
+  poseData,
+  processedItems,
+};
