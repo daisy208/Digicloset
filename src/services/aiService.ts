@@ -711,3 +711,42 @@ return {
   poseData,
   processedItems,
 };
+// src/services/aiService.ts
+import axios from "axios";
+
+const replicateApi = axios.create({
+  baseURL: "https://api.replicate.com/v1",
+  headers: {
+    Authorization: `Token ${import.meta.env.VITE_REPLICATE_API_TOKEN}`,
+    "Content-Type": "application/json",
+  },
+});
+
+export async function runIDMVTON(userPhoto: string, clothingImage: string) {
+  try {
+    const response = await replicateApi.post("/predictions", {
+      version: "e3542a31e7e2d2d8c2c4ab46a30f6d77d1d923b96a47db1e7c843f3e5e0f2c8d", // IDM-VTON model version
+      input: {
+        image: userPhoto,     // person photo
+        cloth: clothingImage, // clothing photo
+        category: "upper_body" // or "lower_body" depending on garment
+      },
+    });
+
+    let prediction = response.data;
+    while (prediction.status !== "succeeded" && prediction.status !== "failed") {
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      const check = await replicateApi.get(`/predictions/${prediction.id}`);
+      prediction = check.data;
+    }
+
+    if (prediction.status === "succeeded") {
+      return prediction.output[0]; // final try-on image URL
+    } else {
+      throw new Error("IDM-VTON failed: " + prediction.error);
+    }
+  } catch (error) {
+    console.error("Error running IDM-VTON:", error);
+    throw error;
+  }
+}
