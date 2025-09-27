@@ -20,6 +20,7 @@ export const VirtualTryOn: React.FC<VirtualTryOnProps> = ({
   const [processingStage, setProcessingStage] = useState<string>('');
   const [qualityScore, setQualityScore] = useState<number | null>(null);
   const [fitAnalysis, setFitAnalysis] = useState<any>(null);
+  const [warpedImage, setWarpedImage] = useState<string | null>(null);
 
   // NEW STATES
   const [poseData, setPoseData] = useState<any>(null);
@@ -143,6 +144,24 @@ const exportImage = async () => {
       alert('Sharing feature would be available here!');
     }
   };
+const handleTryOn = async () => {
+  if (!userPhoto || selectedItems.length === 0) return;
+
+  setIsProcessing(true);
+  setProcessingStage("Generating Try-On with IDM-VTON...");
+
+  try {
+    // For now, just send the first clothing item
+    const result = await runIDMVTON(userPhoto, selectedItems[0].image);
+    setWarpedImage(result);
+    setProcessingStage("Complete!");
+  } catch (err) {
+    console.error(err);
+    setProcessingStage("Failed to generate");
+  } finally {
+    setTimeout(() => setIsProcessing(false), 1000);
+  }
+};
 
   return (
     <div className="bg-white rounded-xl shadow-lg overflow-hidden">
@@ -197,7 +216,7 @@ const exportImage = async () => {
                 className="absolute inset-0 pointer-events-none"
                 style={{ zIndex: 10 + index }}
               >
-                <img
+                </img
                   src={`data:image/png;base64,${item.mask}`}
                   alt={item.name}
                   className="w-full h-full object-cover mix-blend-multiply opacity-80"
@@ -346,16 +365,4 @@ const exportImage = async () => {
     </div>
   );
 };
-const [warpedImage, setWarpedImage] = useState<string | null>(null);
 
-const handleTryOn = async () => {
-  setIsProcessing(true);
-  try {
-    const result = await runIDMVTON(userPhoto, selectedItems[0].image);
-    setWarpedImage(result);
-  } catch (err) {
-    console.error(err);
-  } finally {
-    setIsProcessing(false);
-  }
-};
