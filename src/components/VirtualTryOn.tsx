@@ -346,3 +346,16 @@ const exportImage = async () => {
     </div>
   );
 };
+const [warpedImage, setWarpedImage] = useState<string | null>(null);
+
+const handleTryOn = async () => {
+  setIsProcessing(true);
+  try {
+    const result = await runIDMVTON(userPhoto, selectedItems[0].image);
+    setWarpedImage(result);
+  } catch (err) {
+    console.error(err);
+  } finally {
+    setIsProcessing(false);
+  }
+};
