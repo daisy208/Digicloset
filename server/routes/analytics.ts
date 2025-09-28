@@ -486,3 +486,64 @@ function convertToCSV(data: any[]): string {
 }
 
 export default router;
+// src/services/analyticsService.ts
+import { supabase } from "../supabaseClient";
+
+// ✅ Total try-ons in last 7 days
+export async function getWeeklyTryOns() {
+  const { data, error } = await supabase
+    .from("tryons")
+    .select("id, timestamp")
+    .gte("timestamp", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
+
+  if (error) throw error;
+  return data.length;
+}
+
+// ✅ Unique active users in last 7 days
+export async function getActiveUsers() {
+  const { data, error } = await supabase
+    .from("tryons")
+    .select("user_id")
+    .gte("timestamp", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
+
+  if (error) throw error;
+  const uniqueUsers = new Set(data.map((d) => d.user_id));
+  return uniqueUsers.size;
+}
+
+// ✅ Daily trend of try-ons
+export async function getDailyTrends() {
+  const { data, error } = await supabase
+    .from("tryons")
+    .select("timestamp");
+
+  if (error) throw error;
+
+  const trends: Record<string, number> = {};
+  data.forEach((row) => {
+    const day = new Date(row.timestamp).toISOString().split("T")[0];
+    trends[day] = (trends[day] || 0) + 1;
+  });
+
+  return Object.entries(trends).map(([date, count]) => ({ date, count }));
+}
+
+// ✅ Most popular items
+export async function getPopularItems(limit = 5) {
+  const { data, error } = await supabase
+    .from("tryons")
+    .select("item_id");
+
+  if (error) throw error;
+
+  const counts: Record<string, number> = {};
+  data.forEach((row) => {
+    counts[row.item_id] = (counts[row.item_id] || 0) + 1;
+  });
+
+  return Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([id, count]) => ({ id, count }));
+}
