@@ -260,3 +260,78 @@ export const RealTimeAnalyticsDashboard: React.FC = () => {
     </div>
   );
 };
+import { useEffect, useState } from "react";
+import {
+  getWeeklyTryOns,
+  getActiveUsers,
+  getDailyTrends,
+  getPopularItems,
+} from "../services/analyticsService";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+} from "recharts";
+
+export default function AnalyticsDashboard() {
+  const [weeklyTryOns, setWeeklyTryOns] = useState(0);
+  const [activeUsers, setActiveUsers] = useState(0);
+  const [dailyTrends, setDailyTrends] = useState<any[]>([]);
+  const [popularItems, setPopularItems] = useState<any[]>([]);
+
+  useEffect(() => {
+    getWeeklyTryOns().then(setWeeklyTryOns);
+    getActiveUsers().then(setActiveUsers);
+    getDailyTrends().then(setDailyTrends);
+    getPopularItems().then(setPopularItems);
+  }, []);
+
+  return (
+    <div className="p-6 bg-white rounded-xl shadow-md">
+      <h2 className="text-2xl font-bold mb-6">Brand Analytics Dashboard</h2>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 gap-6 mb-8">
+        <div className="p-4 bg-indigo-50 rounded-lg text-center">
+          <p className="text-gray-500">Total Try-Ons (7 days)</p>
+          <h3 className="text-2xl font-bold text-indigo-700">{weeklyTryOns}</h3>
+        </div>
+        <div className="p-4 bg-green-50 rounded-lg text-center">
+          <p className="text-gray-500">Active Users (7 days)</p>
+          <h3 className="text-2xl font-bold text-green-700">{activeUsers}</h3>
+        </div>
+      </div>
+
+      {/* Daily Try-On Trend */}
+      <div className="mb-8">
+        <h3 className="text-lg font-semibold mb-2">Daily Try-Ons</h3>
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={dailyTrends}>
+            <XAxis dataKey="date" />
+            <YAxis />
+            <Tooltip />
+            <Line type="monotone" dataKey="count" stroke="#4f46e5" />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Popular Items */}
+      <div>
+        <h3 className="text-lg font-semibold mb-2">Top Tried-On Items</h3>
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={popularItems}>
+            <XAxis dataKey="id" />
+            <YAxis />
+            <Tooltip />
+            <Bar dataKey="count" fill="#10b981" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
