@@ -7,6 +7,10 @@ import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import express from 'express';
+import { setupSwagger } from './swagger';
+
+const app = express();
 
 // Import database
 import { testConnection, initializeDatabase } from './config/database.js';
@@ -179,3 +183,9 @@ process.on('SIGINT', () => {
 startServer();
 
 export default app;
+
+setupSwagger(app);
+
+app.listen(process.env.PORT || 5000, () => {
+  console.log('Server running');
+});
