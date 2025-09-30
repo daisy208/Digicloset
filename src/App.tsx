@@ -308,3 +308,19 @@ function App() {
 }
 
 export default App;
+// src/App.tsx
+import React, { Suspense, lazy } from 'react';
+
+const VirtualTryOn = lazy(() => import('./components/VirtualTryOn'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+
+function App() {
+  return (
+    <Suspense fallback={<div className="text-center mt-10">Loading...</div>}>
+      <AdminDashboard />
+      <VirtualTryOn />
+    </Suspense>
+  );
+}
+
+export default App;
