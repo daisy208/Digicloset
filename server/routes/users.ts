@@ -215,3 +215,20 @@ asyncHandler(async (req: AuthRequest, res: express.Response) => {
 }));
 
 export default router;
+// server/routes/users.ts
+import express from 'express';
+import { UserService } from '../services/userService';
+
+const router = express.Router();
+const userService = new UserService();
+
+router.get('/', async (req, res) => {
+  try {
+    const users = await userService.getAllUsers();
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
+export default router;
