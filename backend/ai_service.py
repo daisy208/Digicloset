@@ -76,6 +76,8 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+from app.health import router as health_router
+app.include_router(health_router)
 
 # CORS middleware
 app.add_middleware(
