@@ -21,6 +21,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import uvicorn
+from app.monitoring import init_monitoring
+init_monitoring()
 
 # Import AI model implementations
 from models.viton_hd import VITONHDModel
