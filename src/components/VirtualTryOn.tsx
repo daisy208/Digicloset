@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Download, Share2, RotateCcw, Camera, Layers, Brain, Zap, Eye } from 'lucide-react';
 import { ClothingItem, LightingSettings } from '../types';
-import { runIDMVTON } from '../services/aiService';
+import { aiService } from '../services/aiService';
 
 interface VirtualTryOnProps {
   userPhoto: string;
@@ -30,9 +30,13 @@ export const VirtualTryOn: React.FC<VirtualTryOnProps> = ({
     setProcessingStage("Generating Try-On with IDM-VTON...");
 
     try {
-      // For now: only one clothing item at a time
-      const result = await runIDMVTON(userPhoto, selectedItems[0].image);
-      setWarpedImage(result);
+      const result = await aiService.processVirtualTryOn(
+        userPhoto,
+        selectedItems,
+        lightingSettings
+      );
+      setWarpedImage(result.processedImageUrl);
+      setFitAnalysis(result.fitAnalysis);
       setProcessingStage("Complete!");
     } catch (err) {
       console.error(err);

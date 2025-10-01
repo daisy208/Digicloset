@@ -181,30 +181,21 @@ class AIService {
     } catch (error) {
       console.error('Virtual try-on processing failed:', error);
       throw new Error('Failed to process virtual try-on. Please try again.');
-    const REPLICATE_API = "r8_KgS9lGQChjl1w9sPCONJ0YHdfXBobpj0k7LaT";
-
-async function detectPose(userPhoto: string) {
-  const response = await axios.post(
-    "https://api.replicate.com/v1/predictions",
-    {
-      version: "MEDIA_PIPE_POSE_MODEL_ID", // Replace with actual model ID
-      input: {
-        image: userPhoto,
-      },
-    },
-    {
-      headers: {
-        Authorization: `Token ${r8_KgS9lGQChjl1w9sPCONJ0YHdfXBobpj0k7LaT}`,
-        "Content-Type": "application/json",
-      },
     }
-  );
+  }
 
-  return response.data; // contains pose keypoints
-}
+  async generateOutfitCombinations(
+    items: ClothingItem[],
+    userAnalysis: AIAnalysisResult,
+    preferences: StylePreferences,
+    occasion?: string
+  ): Promise<ClothingItem[][]> {
+    if (this.useRealAI) {
+      try {
+        const comprehensiveAnalysis = this.convertToComprehensiveAnalysis(userAnalysis);
+        return await realAIService.generateOutfits(items, comprehensiveAnalysis, preferences, occasion);
       } catch (error) {
         console.warn('Real AI outfit generation failed, using fallback:', error);
-        // Fall through to mock implementation
       }
     }
 
@@ -649,104 +640,3 @@ async function detectPose(userPhoto: string) {
 
 export const aiService = new AIService();
 export default aiService;
-import axios from "axios";
-
-const REMOVE_BG_KEY = "fBmdsKDpj3sK2LsnvFbcoKcb";
-
-export const aiService = {
-  async processVirtualTryOn(userPhoto: string, selectedItems: any[], lighting: any) {
-    try {
-      // Step 1: Clean background
-      const formData = new FormData();
-      formData.append("image_file_b64", userPhoto.split(",")[1]);
-      formData.append("size", "auto");
-
-      const bgResponse = await axios.post(
-        "https://api.remove.bg/v1.0/removebg",
-        formData,
-        {
-          headers: { "X-Api-Key": fBmdsKDpj3sK2LsnvFbcoKcb},
-        }
-      );
-
-      const cleanedPhoto = `data:image/png;base64,${bgResponse.data.data.result_b64}`;
-
-      // Step 2: Fake cloth overlay for now
-      return {
-        processedImageUrl: cleanedPhoto, // will later add overlay logic
-        qualityScore: 85,
-        fitAnalysis: {
-          overall_fit: "good",
-          size_recommendation: "M",
-          adjustments_needed: ["Adjust shoulders slightly"],
-        },
-      };
-    } catch (error) {
-      console.error("AI Service Error:", error);
-      throw error;
-    }
-  }, 
-};
-const HF_API = "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";
-
-async function segmentCloth(clothingImage: string) {
-  const response = await axios.post(
-    "https://api-inference.huggingface.co/models/lamisa/cloth-segmentation",
-    { inputs: clothingImage },
-    {
-      headers: { Authorization: `Bearer ${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}` },
-    }
-  );
-
-  return response.data; // segmented cloth mask
-}
-return {
-  processedImageUrl: cleanedPhoto,
-  qualityScore: 85,
-  fitAnalysis: {
-    overall_fit: "good",
-    size_recommendation: "M",
-    adjustments_needed: ["Adjust shoulders slightly"],
-  },
-  poseData,
-  processedItems,
-};
-// src/services/aiService.ts
-import axios from "axios";
-
-const replicateApi = axios.create({
-  baseURL: "https://api.replicate.com/v1",
-  headers: {
-    Authorization: `Token ${import.meta.env.VITE_REPLICATE_API_TOKEN}`,
-    "Content-Type": "application/json",
-  },
-});
-
-export async function runIDMVTON(userPhoto: string, clothingImage: string) {
-  try {
-    const response = await replicateApi.post("/predictions", {
-      version: "e3542a31e7e2d2d8c2c4ab46a30f6d77d1d923b96a47db1e7c843f3e5e0f2c8d", // IDM-VTON model version
-      input: {
-        image: userPhoto,     // person photo
-        cloth: clothingImage, // clothing photo
-        category: "upper_body" // or "lower_body" depending on garment
-      },
-    });
-
-    let prediction = response.data;
-    while (prediction.status !== "succeeded" && prediction.status !== "failed") {
-      await new Promise((resolve) => setTimeout(resolve, 3000));
-      const check = await replicateApi.get(`/predictions/${prediction.id}`);
-      prediction = check.data;
-    }
-
-    if (prediction.status === "succeeded") {
-      return prediction.output[0]; // final try-on image URL
-    } else {
-      throw new Error("IDM-VTON failed: " + prediction.error);
-    }
-  } catch (error) {
-    console.error("Error running IDM-VTON:", error);
-    throw error;
-  }
-}
