@@ -3,8 +3,10 @@ kind: Deployment
 metadata:
   name: inference-service
   namespace: virtualfit
+  labels:
+    app: inference-service
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: inference-service
@@ -44,15 +46,26 @@ spec:
             cpu: 4000m
             memory: 16Gi
             nvidia.com/gpu: 1
+        env:
+        - name: NVIDIA_VISIBLE_DEVICES
+          value: all
+        - name: NVIDIA_DRIVER_CAPABILITIES
+          value: compute,utility
+
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: inference-service
+  namespace: virtualfit
+  labels:
+    app: inference-service
 spec:
   type: ClusterIP
   selector:
     app: inference-service
   ports:
-    - port: 8000
+    - name: http
+      port: 8000
       targetPort: 8000
+      protocol: TCP

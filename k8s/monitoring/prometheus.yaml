@@ -59,6 +59,27 @@ data:
         static_configs:
           - targets: ['keda-operator-metrics-apiserver.keda:8080']
 
+      - job_name: 'nvidia-dcgm'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - gpu-operator
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            action: keep
+            regex: nvidia-dcgm-exporter
+          - source_labels: [__meta_kubernetes_pod_ip]
+            action: replace
+            target_label: __address__
+            replacement: $1:9400
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: pod
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: namespace
+
 ---
 apiVersion: apps/v1
 kind: Deployment
