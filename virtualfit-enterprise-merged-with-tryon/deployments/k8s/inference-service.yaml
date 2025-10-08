@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: inference-service
+  namespace: virtualfit
 spec:
   replicas: 2
   selector:
@@ -11,14 +12,37 @@ spec:
     metadata:
       labels:
         app: inference-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
     spec:
       containers:
       - name: inference-service
         image: viton-hd-inference:latest
         ports:
         - containerPort: 8000
+          name: http
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
         resources:
+          requests:
+            cpu: 2000m
+            memory: 8Gi
+            nvidia.com/gpu: 1
           limits:
+            cpu: 4000m
+            memory: 16Gi
             nvidia.com/gpu: 1
 ---
 apiVersion: v1

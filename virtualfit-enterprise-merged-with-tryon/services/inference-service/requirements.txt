@@ -7,3 +7,4 @@ numpy
 opencv-python
 pydantic
 python-multipart
+prometheus-client
