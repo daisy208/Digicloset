@@ -13,6 +13,11 @@
     "preview": "vite preview",
     "start": "node dist/server/index.js",
     "db:init": "node -e \"require('./server/config/database.ts').initializeDatabase()\"",
+    "test": "jest",
+    "test:coverage": "jest --coverage --coverageReporters=text --coverageReporters=lcov",
+    "test:integration": "jest --testMatch='**/*.integration.test.ts'",
+    "test:e2e": "playwright test",
+    "test:watch": "jest --watch",
     "security:audit": "npm audit --audit-level=moderate",
     "security:audit:critical": "npm audit --audit-level=critical",
     "security:fix": "npm audit fix"
