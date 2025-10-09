@@ -1,0 +1,49 @@
+version: "3.8"
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: digicloset
+      POSTGRES_USER: dev
+      POSTGRES_PASSWORD: dev
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dev"]
+      interval: 10s
+      retries: 5
+
+  node-backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile.node
+    env_file:
+      - .env.example
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./web
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "8080:80"
+    environment:
+      - VITE_API_URL=http://localhost:3000
+
+  inference:
+    build:
+      context: .
+      dockerfile: services/inference-service/Dockerfile.python
+    env_file:
+      - .env.example
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./models:/models
+
+volumes:
+  db_data:
