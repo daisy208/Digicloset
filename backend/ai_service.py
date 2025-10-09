@@ -468,3 +468,10 @@ if __name__ == "__main__":
         workers=1,  # Single worker for GPU models
         log_level="info"
     )
+from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
