@@ -12,7 +12,10 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "start": "node dist/server/index.js",
-    "db:init": "node -e \"require('./server/config/database.ts').initializeDatabase()\""
+    "db:init": "node -e \"require('./server/config/database.ts').initializeDatabase()\"",
+    "security:audit": "npm audit --audit-level=moderate",
+    "security:audit:critical": "npm audit --audit-level=critical",
+    "security:fix": "npm audit fix"
   },
   "dependencies": {
     "@mediapipe/face_mesh": "^0.4.1633559619",
