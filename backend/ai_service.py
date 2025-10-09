@@ -2,7 +2,8 @@
 Production AI Service Backend
 Implements real AI models for virtual try-on, body analysis, and style recommendations
 """
-
+from backend.logger import get_logger
+logger = get_logger(__name__)
 import os
 import io
 import time
